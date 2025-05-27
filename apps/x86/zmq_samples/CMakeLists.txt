@@ -14,32 +14,7 @@ include(${CAMKES_VM_HELPERS_PATH})
 find_package(camkes-vm-linux REQUIRED)
 include(${CAMKES_VM_LINUX_HELPERS_PATH})
 
-if(CAKEML_FILTER)
-    include("libs/cakeml_helpers.cmake")
-
-    # Number of vms.
-    set(NumberVMs 2)
-
-    CakeMLPP(components/cakeml-filter libs/virtqueueScript.sml)
-
-    DeclareCAmkESComponent(
-        CakeMLFilter
-        CAKEML_SOURCES
-        components/cakeml-filter/componentScript.sml
-        ${CMAKE_CURRENT_BINARY_DIR}/components/cakeml-filter/virtqueueScript.sml
-        CAKEML_INCLUDES
-        ${CAKEMLDIR}/semantics/alt_semantics
-        SOURCES
-        components/cakeml-filter/global_endpoint.c
-        LIBS
-        vswitch
-        CAKEML_HEAP_SIZE
-        50
-    )
-else()
-    # Number of vms.
-    set(NumberVMs 3)
-endif()
+set(NumberVMs 3)
 
 # CMake foreach RANGE loops are 0..num inclusive....
 MATH(EXPR NumberVMsLess1 "${NumberVMs}-1")
@@ -52,8 +27,11 @@ endforeach()
 DeclareCamkesComponent(virtqueueinit)
 
 # Get 32-bit Linux VM files
-GetArchDefaultLinuxKernelFile("32" kernel_file)
-GetArchDefaultLinuxRootfsFile("32" rootfs_file)
+# GetArchDefaultLinuxKernelFile("32" kernel_file)
+# GetArchDefaultLinuxRootfsFile("32" rootfs_file)
+
+set(kernel_file "/host/custom-vm-kernel/linux-stable/arch/x86/boot/bzImage")
+set(rootfs_file "/host/custom-vm-kernel/buildroot-2023.11/output/images/rootfs.cpio")
 
 foreach(i RANGE ${NumberVMsLess1})
     AddFileToOverlayDir(
@@ -85,63 +63,68 @@ ExternalProject_Add(
     -DBUILD_TESTS=OFF
 )
 
-ExternalProject_Add(
-    demoapps_external
-    SOURCE_DIR
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/user
-    BINARY_DIR
-    ${CMAKE_CURRENT_BINARY_DIR}/src/user
-    DEPENDS
-    zmq_external
-    BUILD_ALWAYS
-    ON
-    EXCLUDE_FROM_ALL
-    CMAKE_ARGS
-    -DCMAKE_TOOLCHAIN_FILE=${LINUX_32BIT_TOOLCHAIN}
-    -DCMAKE_INSTALL_PREFIX=${SYSROOT}
-)
+# ExternalProject_Add(
+#     demoapps_external
+#     SOURCE_DIR
+#     ${CMAKE_CURRENT_SOURCE_DIR}/src/user
+#     BINARY_DIR
+#     ${CMAKE_CURRENT_BINARY_DIR}/src/user
+#     DEPENDS
+#     zmq_external
+#     BUILD_ALWAYS
+#     ON
+#     EXCLUDE_FROM_ALL
+#     CMAKE_ARGS
+#     -DCMAKE_TOOLCHAIN_FILE=${LINUX_32BIT_TOOLCHAIN}
+#     -DCMAKE_INSTALL_PREFIX=${SYSROOT}
+# )
 
-include(external-project-helpers)
-DeclareExternalProjObjectFiles(
-    demoapps_external
-    ${SYSROOT}/bin
-    FILES
-    client
-    server
-    sink
-    source
-    worker
-    pub
-    sub
-)
-macro(AddZMQBinary binary_name)
-    foreach(i RANGE ${NumberVMsLess1})
-        AddFileToOverlayDir(
-            "${binary_name}"
-            ${CMAKE_CURRENT_BINARY_DIR}/sysroot/bin/${binary_name}
-            "bin/"
-            overlay_vm${i}
-        )
-    endforeach()
-endmacro()
+# include(external-project-helpers)
+# DeclareExternalProjObjectFiles(
+#     demoapps_external
+#     ${SYSROOT}/bin
+#     FILES
+#     client
+#     server
+#     sink
+#     source
+#     worker
+#     pub
+#     sub
+# )
+# macro(AddZMQBinary binary_name)
+#     foreach(i RANGE ${NumberVMsLess1})
+#         AddFileToOverlayDir(
+#             "${binary_name}"
+#             ${CMAKE_CURRENT_BINARY_DIR}/sysroot/bin/${binary_name}
+#             "bin/"
+#             overlay_vm${i}
+#         )
+#     endforeach()
+# endmacro()
 
-AddZMQBinary(client)
-AddZMQBinary(server)
-AddZMQBinary(sink)
-AddZMQBinary(source)
-AddZMQBinary(worker)
-AddZMQBinary(pub)
-AddZMQBinary(sub)
+# AddZMQBinary(client)
+# AddZMQBinary(server)
+# AddZMQBinary(sink)
+# AddZMQBinary(source)
+# AddZMQBinary(worker)
+# AddZMQBinary(pub)
+# AddZMQBinary(sub)
 
 foreach(i RANGE ${NumberVMsLess1})
-    if(NOT CAKEML_FILTER)
+    
         AddFileToOverlayDir(
-            "S91zmq_bench"
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/user/zmq_bench_${i}.sh
+            "S91_init"
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/user/init_${i}.sh
             "etc/init.d"
             overlay_vm${i}
         )
-    endif()
+        # AddFileToOverlayDir(
+        #     "name"
+        #     ${CMAKE_CURRENT_SOURCE_DIR}/scripts/initname_${i}.sh
+        #     "etc/profile.d"
+        #     overlay_vm${i}
+        # )
     # Add the buildroot overlay to our bare rootfs image
     AddOverlayDirToRootfs(
         overlay_vm${i}
