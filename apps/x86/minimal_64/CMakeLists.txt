@@ -13,6 +13,9 @@ include(${CAMKES_VM_HELPERS_PATH})
 find_package(camkes-vm-linux REQUIRED)
 include(${CAMKES_VM_LINUX_HELPERS_PATH})
 
+set(CMAKE_BUILD_TYPE:STRING=Debug)
+set(KernelDebugBuild:BOOL=ON)
+
 # Declare VM component: Init0
 DeclareCAmkESVM(Init0)
 
